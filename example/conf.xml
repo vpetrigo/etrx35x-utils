@@ -1,0 +1,22 @@
+<rfconfig>
+  <node type="COO">
+    <reg name="S09" password="password">
+    </reg>
+  </node>
+  <node type="FFD">
+    <reg name="S09" password="password">
+    </reg>
+  </node>
+  <node type="ZED">
+    <reg name="S09" password="password">
+    </reg>
+  </node>
+  <node type="SED">
+    <reg name="S09" password="password">
+    </reg>
+  </node>
+  <node type="MED">
+    <reg name="S09" password="password">
+    </reg>
+  </node>
+</rfconfig>
