@@ -1,6 +1,13 @@
 <rfconfig>
   <node type="COO">
     <reg name="S09" password="password">
+      12341234123412341234123412341234
+    </reg>
+    <reg name="S0A">
+      0000
+    </reg>
+    <reg name="S01">
+      3
     </reg>
   </node>
   <node type="FFD">
