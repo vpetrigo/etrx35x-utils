@@ -2,6 +2,7 @@
 # coding=utf-8
 
 import xml.etree.ElementTree as ElemTree
+import serial
 
 
 class ConfFileError(Exception):
@@ -12,7 +13,7 @@ class NodeTypeNotFound(Exception):
     pass
 
 
-class ModuleConfigurator:
+class ModuleConfigReader:
     _XMLFileHeaderTag = "rfconfig"
     _XMLNodeTag = "node"
     _XMLNodeTypeAttrName = "type"
@@ -35,11 +36,32 @@ class ModuleConfigurator:
                              value=conf_line.text.strip())
                     )
                 return config
-            raise NodeTypeNotFound(
-                "no such node {} in the XML "
-                "configuration file".format(node_type))
+        # if there is no such node type in the config file
+        raise NodeTypeNotFound(
+            "no such node {} in the XML "
+            "configuration file".format(node_type))
 
     def get_avail_nodes(self):
         available_nodes = self.conf_tree.findall("node")
 
         return [i.get("type") for i in available_nodes]
+
+
+class ModuleInterface:
+    EOL_CONST = "\r\n"
+    
+    def __init__(self, port, baudrate=19200, xonxoff=False, rtscts=False):
+        self.module_com = serial.Serial(port, baudrate=baudrate, timeout=0.05, 
+                                        xonxoff=xonxoff, rtscts=rtscts)
+    
+    def write_command(self, command):
+        command += self.EOL_CONST
+        n_bytes = self.module_com.write(bytes(command, "utf-8"))
+        assert n_bytes == len(command), "Something wrong during write"
+        
+    def read_resp(self):
+        data = []
+        for line in iter(self.module_com):
+            data.append(line)
+        
+        return data
