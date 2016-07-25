@@ -49,6 +49,11 @@ class ModuleConfigReader:
 
 class ModuleInterface:
     EOL_CONST = "\r\n"
+    NODE_TYPE = {"COO": 0x0000, "FFD": 0x0000,
+                 "MED": 0xC000, "ZED": 0x8000, 
+                 "SED": 0x4000}
+    MAIN_FUNC_REG = "S0A"
+    COMM_PREFIX = "AT"
     
     def __init__(self, port, baudrate=19200, xonxoff=False, rtscts=False):
         self.module_com = serial.Serial(port, baudrate=baudrate, timeout=0.05, 
@@ -65,3 +70,67 @@ class ModuleInterface:
             data.append(line)
         
         return data
+        
+    def register_read(self, reg):
+        """
+        Form register read command: ATSXX?
+        Input: @reg - register name
+        Output: all data in the serial port after sending a read command
+        """
+        command = self.COMM_PREFIX + self.MAIN_FUNC_REG + "?"
+        self.write_command(command)
+        
+        return self.read_resp()
+    
+    def register_write(self, reg, value, password=None):
+        """
+        Form register write command: ATSXX=<value>[:<password>]
+        Input:  @reg - register name
+                @password - (optional) access to a register @reg might be
+                provided only with a password
+        Output: all data in the serial port after sending a write command
+        """
+        # Form register write command: ATSXX=<value>
+        command = self.COMM_PREFIX + self.MAIN_FUNC_REG + "=" + value
+        if password:
+            command += ":" + password
+        command += self.EOL_CONST
+        self.write_command(command)
+        
+        return self.read_resp()
+    
+    def set_node_type(self, node_type):
+        """
+        Set module node type to a requested value
+        Input:  @node_type - desirable node type (COO, FFD, etc)
+        Output: None
+        """
+        if node_type not in self.NODE_TYPE.keys():
+            raise NodeTypeNotFound("Wrong node type: " + str(node_type))
+        resp = self.register_read(self.MAIN_FUNC_REG)
+        print(resp)
+        # Node type is determined by 2 most significant bits E and F
+        # left all data except those bits
+        MASK = 0x3FFF
+        masked_value = MASK & int(resp[1], 16)
+        value = "{:04X}".format(self.NODE_TYPE[node_type] | masked_value)
+        resp = self.register_write(self.MAIN_FUNC_REG, value, "password")
+        print(resp)
+    
+    def set_router(self):
+        self.set_node_type("FFD")
+    
+    def set_sleepy(self):
+        self.set_node_type("SED")
+    
+    def set_mobile(self):
+        self.set_node_type("MED")
+    
+    def set_end_device(self):
+        self.set_node_type("ZED")
+    
+    def apply_config(self, config):
+        """
+        Experimental
+        """
+        pass
