@@ -23,10 +23,7 @@ class ModuleConfigReader:
     _XMLNodeTypeAttrName = "type"
 
     def __init__(self, config_file: "XML file with configuration"):
-        self.config_file = config_file
-
-    def read_config(self):
-        self.conf_tree = ElemTree.parse(self.config_file)
+        self.conf_tree = ElemTree.parse(config_file)
         if self.conf_tree.getroot().tag != self._XMLFileHeaderTag:
             raise ConfFileError("unsupported XML file format")
 
