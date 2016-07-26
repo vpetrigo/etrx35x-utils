@@ -23,7 +23,7 @@ class ConfigIterator:
     REGISTER_NAME_FIELD = "name"
     OVERWRITE_FIELD = "overwrite"
     VALUE_FIELD = "value"
-    
+
     def __init__(self, conf):
         """
         Construct iterator through a given configuration
@@ -39,7 +39,7 @@ class ConfigIterator:
         # flag for doing OR with previously stored value in
         # a S-register
         self.overwrite = True
-        
+
     def __iter__(self):
         """
         Iterate through the whole @self.conf list and
@@ -47,7 +47,7 @@ class ConfigIterator:
         by access via a particular field
         """
         for item in self.conf:
-            self.password = item.get(self.PASSWORD_FIELD)            
+            self.password = item.get(self.PASSWORD_FIELD)
             self.value = item[self.VALUE_FIELD]
 
             if item[self.TYPE_FIELD] == "int":
@@ -57,9 +57,9 @@ class ConfigIterator:
 
             self.reg = item[self.REGISTER_NAME_FIELD]
             overwrite_flag = item.get(self.OVERWRITE_FIELD)
-            if (overwrite_flag != None and 
+            if (overwrite_flag is not None and
                 (overwrite_flag.casefold() == "n" or
-                overwrite_flag.casefold() == "no")):
+                 overwrite_flag.casefold() == "no")):
                 self.overwrite = False
             else:
                 self.overwrite = True
@@ -86,7 +86,8 @@ class ModuleConfigReader:
                 config = []
                 for conf_line in list(node):
                     if conf_line.tag != self._XMLRegisterTagName:
-                        raise ConfFileError("Node configuration only support <reg> tag")
+                        raise ConfFileError(
+                            "Node configuration only support <reg> tag")
                     # add all parameters to the configuration list
                     config.append(
                         dict(((tag, val) for tag, val in conf_line.items()),
@@ -106,32 +107,33 @@ class ModuleConfigReader:
 class ModuleInterface:
     EOL_CONST = "\r"
     NODE_TYPE = {"COO": 0x0000, "FFD": 0x0000,
-                 "MED": 0xC000, "ZED": 0x8000, 
+                 "MED": 0xC000, "ZED": 0x8000,
                  "SED": 0x4000}
     MAIN_FUNC_REG = "S0A"
     COMM_PREFIX = "AT"
-    
-    def __init__(self, port, baudrate=19200, xonxoff=True, rtscts=False, node_type="FFD"):
-        self.module_com = serial.Serial(port, baudrate=baudrate, timeout=0.05, 
+
+    def __init__(self, port, baudrate=19200, xonxoff=True, rtscts=False,
+                 node_type="FFD"):
+        self.module_com = serial.Serial(port, baudrate=baudrate, timeout=0.05,
                                         xonxoff=xonxoff, rtscts=rtscts)
         # by default let it be all devices to be routers
         self.node_type = node_type
         # send appropriate command to set up node type in the hardware
         # to be in a sync state with it
         self.set_node_type(self.node_type)
-    
+
     def write_command(self, command):
         command += self.EOL_CONST
         n_bytes = self.module_com.write(bytes(command, "utf-8"))
         assert n_bytes == len(command), "Something wrong during write"
-        
+
     def read_resp(self):
         data = []
         for line in iter(self.module_com):
             data.append(line)
-        
+
         return data
-        
+
     def register_read(self, reg):
         """
         Form register read command: ATSXX?
@@ -142,9 +144,9 @@ class ModuleInterface:
         self.write_command(command)
         resp = self.read_resp()
         self._check_response(resp)
-        
+
         return resp
-    
+
     def register_write(self, reg, value, password=None):
         """
         Form register write command: ATSXX=<value>[:<password>]
@@ -161,7 +163,7 @@ class ModuleInterface:
         self.write_command(command)
         resp = self.read_resp()
         self._check_response(resp)
-        
+
         return resp
 
     def set_node_type(self, node_type):
@@ -172,40 +174,47 @@ class ModuleInterface:
         """
         if node_type not in self.NODE_TYPE.keys():
             raise NodeTypeNotFound("Wrong node type: " + str(node_type))
-        
+
         self.node_type = node_type
         resp = self.register_read(self.MAIN_FUNC_REG)
+        reg_size = len(resp[1])
         # Node type is determined by 2 most significant bits E and F
         # left all data except those bits
         MASK = 0x3FFF
         masked_value = MASK & int(resp[1], 16)
-        value = "{:04X}".format(self.NODE_TYPE[node_type] | masked_value)
+        value = self._determine_new_int_value(masked_value, 
+                                              self.NODE_TYPE[node_type])
         self.register_write(self.MAIN_FUNC_REG, value, "password")
-    
+
     def set_router(self):
         self.set_node_type("FFD")
-    
+
     def set_sleepy(self):
         self.set_node_type("SED")
-    
+
     def set_mobile(self):
         self.set_node_type("MED")
-    
+
     def set_end_device(self):
         self.set_node_type("ZED")
-    
+
     def _check_response(self, resp):
         status_code = resp[-1].decode("utf8").strip()
         if status_code != "OK":
             raise FirmwareError(status_code)
-    
+
+    def _determine_new_int_value(self, resp_value, new_value):
+        resp_len = len(resp_value)
+
+        return "{0:0{1}X}".format(new_reg_val | int(resp_value, 16), resp_len)
+
     def write_config(self, config_reader):
         dev_config = config_reader.get_node_conf(self.node_type)
-        
+
         for conf_line in dev_config:
             new_reg_val = conf_line.value
             if not conf_line.overwrite:
                 resp = self.register_read(conf_line.reg)
-                new_reg_val = "{:04X}".format(new_reg_val | int(resp[1], 16))
+                new_reg_val = self._determine_new_int_value(resp, new_reg_val)
 
             self.register_write(conf_line.reg, new_reg_val, conf_line.password)
