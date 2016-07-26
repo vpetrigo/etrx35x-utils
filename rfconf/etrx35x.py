@@ -17,10 +17,63 @@ class FirmwareError(Exception):
     pass
 
 
+class ConfigIterator:
+    PASSWORD_FIELD = "password"
+    TYPE_FIELD = "type"
+    REGISTER_NAME_FIELD = "name"
+    OVERWRITE_FIELD = "overwrite"
+    VALUE_FIELD = "value"
+    
+    def __init__(self, conf):
+        """
+        Construct iterator through a given configuration
+        In: @conf - a list of dictionaries with configuration values
+        """
+        self.conf = conf
+        # register to be configured
+        self.reg = None
+        # value to be written
+        self.value = None
+        # password to be used
+        self.password = None
+        # flag for doing OR with previously stored value in
+        # a S-register
+        self.overwrite = True
+        
+    def __iter__(self):
+        """
+        Iterate through the whole @self.conf list and
+        extract necessary information that might be used
+        by access via a particular field
+        """
+        for item in self.conf:
+            self.password = item.get(self.PASSWORD_FIELD)            
+            self.value = item[self.VALUE_FIELD]
+
+            if item[self.TYPE_FIELD] == "int":
+                self.value = int(self.value)
+            elif item[self.TYPE_FIELD] == "hex":
+                self.value = int(self.value, 16)
+
+            self.reg = item[self.REGISTER_NAME_FIELD]
+            overwrite_flag = item.get(self.OVERWRITE_FIELD)
+            if (overwrite_flag != None and 
+                (overwrite_flag.casefold() == "n" or
+                overwrite_flag.casefold() == "no")):
+                self.overwrite = False
+            else:
+                self.overwrite = True
+
+            yield self
+        else:
+            raise StopIteration
+
+
 class ModuleConfigReader:
     _XMLFileHeaderTag = "rfconfig"
     _XMLNodeTag = "node"
     _XMLNodeTypeAttrName = "type"
+    _XMLRegisterTagName = "reg"
 
     def __init__(self, config_file: "XML file with configuration"):
         self.conf_tree = ElemTree.parse(config_file)
@@ -32,11 +85,13 @@ class ModuleConfigReader:
             if node.get(self._XMLNodeTypeAttrName) == node_type:
                 config = []
                 for conf_line in list(node):
+                    if conf_line.tag != self._XMLRegisterTagName:
+                        raise ConfFileError("Node configuration only support <reg> tag")
+                    # add all parameters to the configuration list
                     config.append(
                         dict(((tag, val) for tag, val in conf_line.items()),
-                             value=conf_line.text.strip())
-                    )
-                return config
+                             value=conf_line.text.strip()))
+                return ConfigIterator(config)
         # if there is no such node type in the config file
         raise NodeTypeNotFound(
             "no such node {} in the XML "
@@ -136,9 +191,15 @@ class ModuleInterface:
         status_code = resp[-1].decode("utf8").strip()
         if status_code != "OK":
             raise FirmwareError(status_code)
+
+def write_config(module_inst, config_reader, node_type):
+    dev_config = config.get_node_conf(node_type)
+    module_inst.set_node_type(node_type)
     
-    def apply_config(self, config):
-        """
-        Experimental
-        """
-        pass
+    for conf_line in dev_config:
+        new_reg_val = conf_line.value
+        if not conf_line.overwrite:
+            resp = module_inst.register_read(conf_line.reg)
+            new_reg_val = "{:04X}".format(new_reg_val | int(resp[1], 16))
+
+        module_inst.register_write(conf_line.reg, new_reg_val, conf_line.password)
