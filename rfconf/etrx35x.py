@@ -111,9 +111,14 @@ class ModuleInterface:
     MAIN_FUNC_REG = "S0A"
     COMM_PREFIX = "AT"
     
-    def __init__(self, port, baudrate=19200, xonxoff=True, rtscts=False):
+    def __init__(self, port, baudrate=19200, xonxoff=True, rtscts=False, node_type="FFD"):
         self.module_com = serial.Serial(port, baudrate=baudrate, timeout=0.05, 
                                         xonxoff=xonxoff, rtscts=rtscts)
+        # by default let it be all devices to be routers
+        self.node_type = node_type
+        # send appropriate command to set up node type in the hardware
+        # to be in a sync state with it
+        self.set_node_type(self.node_type)
     
     def write_command(self, command):
         command += self.EOL_CONST
@@ -167,6 +172,8 @@ class ModuleInterface:
         """
         if node_type not in self.NODE_TYPE.keys():
             raise NodeTypeNotFound("Wrong node type: " + str(node_type))
+        
+        self.node_type = node_type
         resp = self.register_read(self.MAIN_FUNC_REG)
         # Node type is determined by 2 most significant bits E and F
         # left all data except those bits
@@ -191,15 +198,14 @@ class ModuleInterface:
         status_code = resp[-1].decode("utf8").strip()
         if status_code != "OK":
             raise FirmwareError(status_code)
-
-def write_config(module_inst, config_reader, node_type):
-    dev_config = config.get_node_conf(node_type)
-    module_inst.set_node_type(node_type)
     
-    for conf_line in dev_config:
-        new_reg_val = conf_line.value
-        if not conf_line.overwrite:
-            resp = module_inst.register_read(conf_line.reg)
-            new_reg_val = "{:04X}".format(new_reg_val | int(resp[1], 16))
+    def write_config(self, config_reader):
+        dev_config = config_reader.get_node_conf(self.node_type)
+        
+        for conf_line in dev_config:
+            new_reg_val = conf_line.value
+            if not conf_line.overwrite:
+                resp = self.register_read(conf_line.reg)
+                new_reg_val = "{:04X}".format(new_reg_val | int(resp[1], 16))
 
-        module_inst.register_write(conf_line.reg, new_reg_val, conf_line.password)
+            self.register_write(conf_line.reg, new_reg_val, conf_line.password)
