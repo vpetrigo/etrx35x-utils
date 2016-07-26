@@ -11,14 +11,12 @@ def write_conf(device, node_type, config):
     device.set_node_type(node_type)
 
     for conf_line in dev_config:
-        new_reg_val = conf_line["value"]
-        if conf_line["overwrite"] == 'n':
-            if conf_line["type"] == "int":
-                resp = device.register_read(conf_line["name"])
-                new_reg_val = "{:04X}".format(int(new_reg_val, 16) | int(resp[1], 16))
+        new_reg_val = conf_line.value
+        if not conf_line.overwrite:
+            resp = device.register_read(conf_line.reg)
+            new_reg_val = "{:04X}".format(new_reg_val | int(resp[1], 16))
 
-        password = conf_line.get("password")
-        device.register_write(conf_line["name"], new_reg_val, password)
+        device.register_write(conf_line.reg, new_reg_val, conf_line.password)
 
 
 def main():
