@@ -4,6 +4,7 @@
 import xml.etree.ElementTree as ElemTree
 import serial
 import serial.threaded
+import traceback
 
 
 class ConfFileError(Exception):
@@ -236,6 +237,8 @@ class ThreadedModuleInterface(serial.threaded.LineReader, ModuleInterface):
         serial.threaded.LineReader.__init__(self)
 
     def __call__(self):
+        # as serial.threaded interface use serial.threaded.LineReader
+        # as the protocol factory
         return self
         
     def connection_made(self, transport):
@@ -253,3 +256,6 @@ class ThreadedModuleInterface(serial.threaded.LineReader, ModuleInterface):
 
     def write_line(self, text):
         self.write_command(text)
+    
+    def get_serial_interface(self):
+        return self.module_com
