@@ -185,7 +185,8 @@ class ModuleInterface:
         # Node type is determined by 2 most significant bits E and F
         # left all data except those bits
         MASK = 0x3FFF
-        masked_value = MASK & int(resp[self.RESP_REGISTER_POS], 16) | self.NODE_TYPE[node_type]
+        masked_value = (MASK & int(resp[self.RESP_REGISTER_POS], 16) |
+                        self.NODE_TYPE[node_type])
         value = self._determine_new_value(resp[self.RESP_REGISTER_POS],
                                           masked_value, False)
         self.register_write(self.MAIN_FUNC_REG, value, "password")
@@ -226,10 +227,11 @@ class ModuleInterface:
             new_reg_val = conf_line.value
             # we have to read a register here for determining value size
             resp = self.register_read(conf_line.reg)
-            new_reg_val = self._determine_new_value(resp[self.RESP_REGISTER_POS], 
-                                                    new_reg_val, conf_line.overwrite)
+            new_reg_val = self._determine_new_value(
+                resp[self.RESP_REGISTER_POS], new_reg_val, conf_line.overwrite)
             print(new_reg_val)
             self.register_write(conf_line.reg, new_reg_val, conf_line.password)
+
 
 class ThreadedModuleInterface(serial.threaded.LineReader, ModuleInterface):
     def __init__(self, *args, **kwargs):
@@ -240,7 +242,7 @@ class ThreadedModuleInterface(serial.threaded.LineReader, ModuleInterface):
         # as serial.threaded interface use serial.threaded.LineReader
         # as the protocol factory
         return self
-        
+
     def connection_made(self, transport):
         super().connection_made(transport)
         print("port opened")
@@ -256,6 +258,6 @@ class ThreadedModuleInterface(serial.threaded.LineReader, ModuleInterface):
 
     def write_line(self, text):
         self.write_command(text)
-    
+
     def get_serial_interface(self):
         return self.module_com
