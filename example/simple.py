@@ -6,7 +6,7 @@ import serial.tools.list_ports
 
 
 def main():
-    configurator = rfconf.ModuleConfigReader("conf.xml")
+    configurator = rfconf.ModuleConfigReader("sensor_nwk.xml")
     supp_nodes = configurator.get_avail_nodes()
     supp_nodes = dict(enumerate(supp_nodes))
     
@@ -17,6 +17,7 @@ def main():
         for com in serial.tools.list_ports.comports():
             if com.description.split()[0] == "Telegesis":
                 tgmodule = rfconf.ModuleInterface(com.device)
+                print(com.description)
                 usr_choice = int(input("How would you like to configure that node: "))
                 tgmodule.set_node_type(supp_nodes[usr_choice])
                 tgmodule.write_config(configurator)

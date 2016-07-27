@@ -5,12 +5,16 @@
       12341234123412341234123412341234
     </reg>
     <!-- Настройки безопасности -->
-    <reg name="S0A" password="password" overwrite="n" type="hex16">
+    <reg name="S0A" password="password" overwrite="n" type="hex">
       0114
     </reg>
     <!-- Выходная мощность передатчика -->
     <reg name="S01" overwrite="y" type="int">
       3
+    </reg>
+    <!-- Стать Sink-узлом -->
+    <reg name="S10" overwrite="n" type="hex">
+      10
     </reg>
   </node>
   <node type="SED">
@@ -19,26 +23,37 @@
       12341234123412341234123412341234
     </reg>
     <!-- Настройки безопасности -->
-    <reg name="S0A" password="password" overwrite="n" type="hex16">
+    <reg name="S0A" password="password" overwrite="n" type="hex">
       0114
     </reg>
     <!-- Выходная мощность передатчика -->
     <reg name="S01" overwrite="y" type="int">
       3
     </reg>
+    <!-- Включить автоматический поиск Sink-узла -->
+    <reg name="S10" overwrite="n" type="hex">
+      100
+    </reg>
     <!-- Включение альтернативной функциональности PB0 -->
-    <reg name="S15" overwrite="n" type="hex32">
+    <reg name="S15" overwrite="n" type="hex">
       2000
     </reg>
-    <!-- Конфигурирование портов ввода/вывода -->
-    <reg name="S13" overwrite="y" type="hex32">
+    <!-- Настройка портов ввода/вывода -->
+    <reg name="S13" overwrite="y" type="hex">
       00FF7EFB
     </reg>
-    <reg name="S16" overwrite="y" type="hex32">
+    <reg name="S16" overwrite="y" type="hex">
       00008204
     </reg>
-    <reg name="S18" overwrite="y" type="hex32">
+    <reg name="S18" overwrite="y" type="hex">
       00FD58E7
+    </reg>
+    <!-- Настройка таймера/счетчика 7 -->
+    <reg name="S37" overwrite="y" type="int">
+      40
+    </reg>
+    <reg name="S38" overwrite="y" type="hex">
+      8110
     </reg>
   </node>
 </rfconfig>
