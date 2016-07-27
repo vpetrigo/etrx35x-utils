@@ -111,6 +111,9 @@ class ModuleInterface:
                  "SED": 0x4000}
     MAIN_FUNC_REG = "S0A"
     COMM_PREFIX = "AT"
+    # position of a register value in a response from module
+    # with !command echo on!
+    RESP_REGISTER_POS = 1
 
     def __init__(self, port, baudrate=19200, xonxoff=True, rtscts=False,
                  node_type="FFD"):
@@ -177,13 +180,12 @@ class ModuleInterface:
 
         self.node_type = node_type
         resp = self.register_read(self.MAIN_FUNC_REG)
-        reg_size = len(resp[1])
         # Node type is determined by 2 most significant bits E and F
         # left all data except those bits
         MASK = 0x3FFF
-        masked_value = MASK & int(resp[1], 16)
-        value = self._determine_new_int_value(masked_value, 
-                                              self.NODE_TYPE[node_type])
+        masked_value = MASK & int(resp[self.RESP_REGISTER_POS], 16) | self.NODE_TYPE[node_type]
+        value = self._determine_new_value(resp[self.RESP_REGISTER_POS],
+                                          masked_value, False)
         self.register_write(self.MAIN_FUNC_REG, value, "password")
 
     def set_router(self):
@@ -203,18 +205,26 @@ class ModuleInterface:
         if status_code != "OK":
             raise FirmwareError(status_code)
 
-    def _determine_new_int_value(self, resp_value, new_value):
-        resp_len = len(resp_value)
+    def _determine_reg_size(self, resp_reg_value):
+        return len(resp_reg_value.strip())
 
-        return "{0:0{1}X}".format(new_reg_val | int(resp_value, 16), resp_len)
+    def _determine_new_value(self, resp_value, new_value, overwrite):
+        resp_len = self._determine_reg_size(resp_value)
+        # if we have a string put it back as is, otherwise we should
+        # add leading zeros
+        format_string = "{0:0{1}X}" if type(new_value) is not str else "{}"
+        value = new_value if overwrite else new_value | int(resp_value, 16)
+
+        return format_string.format(value, resp_len)
 
     def write_config(self, config_reader):
         dev_config = config_reader.get_node_conf(self.node_type)
 
         for conf_line in dev_config:
             new_reg_val = conf_line.value
-            if not conf_line.overwrite:
-                resp = self.register_read(conf_line.reg)
-                new_reg_val = self._determine_new_int_value(resp, new_reg_val)
-
+            # we have to read a register here for determining value size
+            resp = self.register_read(conf_line.reg)
+            new_reg_val = self._determine_new_value(resp[self.RESP_REGISTER_POS], 
+                                                    new_reg_val, conf_line.overwrite)
+            print(new_reg_val)
             self.register_write(conf_line.reg, new_reg_val, conf_line.password)
