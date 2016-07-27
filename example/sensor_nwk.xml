@@ -12,6 +12,10 @@
     <reg name="S01" overwrite="y" type="int">
       3
     </reg>
+    <!-- Стать Sink-узлом -->
+    <reg name="S10" overwrite="n" type="hex">
+      10
+    </reg>
   </node>
   <node type="SED">
     <!-- Link Key -->
@@ -26,11 +30,15 @@
     <reg name="S01" overwrite="y" type="int">
       3
     </reg>
+    <!-- Включить поиск Sink-узла -->
+    <reg name="S10" overwrite="n" type="hex">
+      100
+    </reg>
     <!-- Включение альтернативной функциональности PB0 -->
     <reg name="S15" overwrite="n" type="hex">
       2000
     </reg>
-    <!-- Конфигурирование портов ввода/вывода -->
+    <!-- Настройка портов ввода/вывода -->
     <reg name="S13" overwrite="y" type="hex">
       00FF7EFB
     </reg>
@@ -39,6 +47,13 @@
     </reg>
     <reg name="S18" overwrite="y" type="hex">
       00FD58E7
+    </reg>
+    <!-- Настройка таймера/счетчика 7 -->
+    <reg name="S37" overwrite="y" type="int">
+      40
+    </reg>
+    <reg name="S38" overwrite="y" type="hex">
+      8110
     </reg>
   </node>
 </rfconfig>
