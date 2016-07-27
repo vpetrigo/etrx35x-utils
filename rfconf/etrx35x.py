@@ -3,6 +3,7 @@
 
 import xml.etree.ElementTree as ElemTree
 import serial
+import serial.threaded
 
 
 class ConfFileError(Exception):
@@ -228,3 +229,27 @@ class ModuleInterface:
                                                     new_reg_val, conf_line.overwrite)
             print(new_reg_val)
             self.register_write(conf_line.reg, new_reg_val, conf_line.password)
+
+class ThreadedModuleInterface(serial.threaded.LineReader, ModuleInterface):
+    def __init__(self, *args, **kwargs):
+        ModuleInterface.__init__(self, *args, **kwargs)
+        serial.threaded.LineReader.__init__(self)
+
+    def __call__(self):
+        return self
+        
+    def connection_made(self, transport):
+        super().connection_made(transport)
+        print("port opened")
+        self.write_line("AT")
+
+    def handle_line(self, data):
+        print("line received: {}".format(repr(data)))
+
+    def connection_lost(self, exc):
+        if exc:
+            traceback.print_exc(exc)
+        print("port closed")
+
+    def write_line(self, text):
+        self.write_command(text)
