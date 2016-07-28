@@ -116,6 +116,7 @@ class ETRXModule:
     # position of a register value in a response from module
     # with !command echo on!
     RESP_REGISTER_POS = 1
+    RESP_STATUS_POS = -1
 
     def __init__(self, port, *, node_type="FFD",
                  baudrate=19200, timeout=1, xonxoff=True, **kwargs):
@@ -137,12 +138,25 @@ class ETRXModule:
         n_bytes = self.module_com.write(bytes(command, "utf-8"))
         assert n_bytes == len(command), "Something wrong during write"
 
+    def reader(self):
+        line = ""
+        while True:
+            line = self.readline()
+            if line:
+                yield line
+
+    def is_statusline(self, line):
+        if line == "OK" or line.split(":")[0] == "ERROR":
+            return True
+        return False
+
     def read_resp(self):
         data = []
-        for line in iter(self.module_com):
-            line = line.decode("utf-8").strip()
-            if line:
-                data.append(line)
+        for line in self.reader():
+            data.append(line)
+            # usually all commands end with the "OK" or "ERROR:XX" status code
+            if self.is_statusline(line):
+                break
 
         return data
 
@@ -211,7 +225,7 @@ class ETRXModule:
         self.set_node_type("ZED")
 
     def _check_response(self, resp):
-        status_code = resp[-1]
+        status_code = resp[self.RESP_STATUS_POS]
         if status_code != "OK":
             raise FirmwareError(status_code)
 
