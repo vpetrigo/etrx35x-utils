@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 # coding=utf-8
 
+import re
 import xml.etree.ElementTree as ElemTree
 import serial
+import serial.threaded
+import traceback
 
 
 class ConfFileError(Exception):
@@ -69,7 +72,7 @@ class ConfigIterator:
             raise StopIteration
 
 
-class ModuleConfigReader:
+class ETRXModuleConfigReader:
     _XMLFileHeaderTag = "rfconfig"
     _XMLNodeTag = "node"
     _XMLNodeTypeAttrName = "type"
@@ -104,7 +107,7 @@ class ModuleConfigReader:
         return [i.get("type") for i in available_nodes]
 
 
-class ModuleInterface:
+class ETRXModule:
     EOL_CONST = "\r"
     NODE_TYPE = {"COO": 0x0000, "FFD": 0x0000,
                  "MED": 0xC000, "ZED": 0x8000,
@@ -114,26 +117,47 @@ class ModuleInterface:
     # position of a register value in a response from module
     # with !command echo on!
     RESP_REGISTER_POS = 1
+    RESP_STATUS_POS = -1
 
-    def __init__(self, port, baudrate=19200, xonxoff=True, rtscts=False,
-                 node_type="FFD"):
-        self.module_com = serial.Serial(port, baudrate=baudrate, timeout=0.05,
-                                        xonxoff=xonxoff, rtscts=rtscts)
+    def __init__(self, port, *, node_type="FFD",
+                 baudrate=19200, timeout=1, xonxoff=True, **kwargs):
+        self.module_com = serial.serial_for_url(port, baudrate=baudrate,
+                                                timeout=timeout,
+                                                xonxoff=xonxoff,
+                                                **kwargs)
         # by default let it be all devices to be routers
         self.node_type = node_type
         # send appropriate command to set up node type in the hardware
         # to be in a sync state with it
         self.set_node_type(self.node_type)
 
+    def get_serial_interface(self):
+        return self.module_com
+
     def write_command(self, command):
         command += self.EOL_CONST
         n_bytes = self.module_com.write(bytes(command, "utf-8"))
         assert n_bytes == len(command), "Something wrong during write"
 
+    def reader(self):
+        line = ""
+        while True:
+            line = self.readline()
+            if line:
+                yield line
+
+    def is_statusline(self, line):
+        if line == "OK" or line.split(":")[0] == "ERROR":
+            return True
+        return False
+
     def read_resp(self):
         data = []
-        for line in iter(self.module_com):
+        for line in self.reader():
             data.append(line)
+            # usually all commands end with the "OK" or "ERROR:XX" status code
+            if self.is_statusline(line):
+                break
 
         return data
 
@@ -183,7 +207,8 @@ class ModuleInterface:
         # Node type is determined by 2 most significant bits E and F
         # left all data except those bits
         MASK = 0x3FFF
-        masked_value = MASK & int(resp[self.RESP_REGISTER_POS], 16) | self.NODE_TYPE[node_type]
+        masked_value = (MASK & int(resp[self.RESP_REGISTER_POS], 16) |
+                        self.NODE_TYPE[node_type])
         value = self._determine_new_value(resp[self.RESP_REGISTER_POS],
                                           masked_value, False)
         self.register_write(self.MAIN_FUNC_REG, value, "password")
@@ -201,7 +226,7 @@ class ModuleInterface:
         self.set_node_type("ZED")
 
     def _check_response(self, resp):
-        status_code = resp[-1].decode("utf8").strip()
+        status_code = resp[self.RESP_STATUS_POS]
         if status_code != "OK":
             raise FirmwareError(status_code)
 
@@ -212,7 +237,7 @@ class ModuleInterface:
         resp_len = self._determine_reg_size(resp_value)
         # if we have a string put it back as is, otherwise we should
         # add leading zeros
-        format_string = "{0:0{1}X}" if type(new_value) is not str else "{}"
+        format_string = "{0:0{1}X}" if not isinstance(new_value, str) else "{}"
         value = new_value if overwrite else new_value | int(resp_value, 16)
 
         return format_string.format(value, resp_len)
@@ -224,7 +249,41 @@ class ModuleInterface:
             new_reg_val = conf_line.value
             # we have to read a register here for determining value size
             resp = self.register_read(conf_line.reg)
-            new_reg_val = self._determine_new_value(resp[self.RESP_REGISTER_POS], 
-                                                    new_reg_val, conf_line.overwrite)
-            print(new_reg_val)
+            print(resp)
+            resp_reg_value = resp[self.RESP_REGISTER_POS]
+            new_reg_val = self._determine_new_value(resp_reg_value,
+                                                    new_reg_val,
+                                                    conf_line.overwrite)
             self.register_write(conf_line.reg, new_reg_val, conf_line.password)
+
+    def readline(self):
+        return self.module_com.readline().decode("utf8").strip()
+
+
+class ETRXModuleReader(serial.threaded.LineReader):
+    def __init__(self, module_inst):
+        super().__init__()
+        self.module_inst = module_inst
+
+    def __call__(self):
+        return self
+
+    def connection_made(self, transport):
+        super().connection_made(transport)
+        print("Connection with the module opened")
+
+    def handle_line(self, data):
+        print("line received: {}".format(repr(data)))
+
+    def connection_lost(self, exc):
+        if exc:
+            traceback.print_exc(exc)
+        print("Connection with the module closed")
+
+
+def response_split(resp):
+    """
+    Split module response so that in the output list
+    there are only info prefix and values without punctuation
+    """
+    return re.split("\W+", resp)
