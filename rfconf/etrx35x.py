@@ -71,7 +71,7 @@ class ConfigIterator:
             raise StopIteration
 
 
-class ModuleConfigReader:
+class ETRXModuleConfigReader:
     _XMLFileHeaderTag = "rfconfig"
     _XMLNodeTag = "node"
     _XMLNodeTypeAttrName = "type"
@@ -106,7 +106,7 @@ class ModuleConfigReader:
         return [i.get("type") for i in available_nodes]
 
 
-class ModuleInterface:
+class ETRXModule:
     EOL_CONST = "\r"
     NODE_TYPE = {"COO": 0x0000, "FFD": 0x0000,
                  "MED": 0xC000, "ZED": 0x8000,
@@ -117,15 +117,20 @@ class ModuleInterface:
     # with !command echo on!
     RESP_REGISTER_POS = 1
 
-    def __init__(self, port, baudrate=19200, xonxoff=True, rtscts=False,
-                 node_type="FFD"):
-        self.module_com = serial.Serial(port, baudrate=baudrate, timeout=0.05,
-                                        xonxoff=xonxoff, rtscts=rtscts)
+    def __init__(self, port, *, node_type="FFD",
+                 baudrate=19200, timeout=1, xonxoff=True, **kwargs):
+        self.module_com = serial.serial_for_url(port, baudrate=baudrate,
+                                                timeout=timeout,
+                                                xonxoff=xonxoff,
+                                                **kwargs)
         # by default let it be all devices to be routers
         self.node_type = node_type
         # send appropriate command to set up node type in the hardware
         # to be in a sync state with it
         self.set_node_type(self.node_type)
+
+    def get_serial_interface(self):
+        return self.module_com
 
     def write_command(self, command):
         command += self.EOL_CONST
@@ -135,7 +140,7 @@ class ModuleInterface:
     def read_resp(self):
         data = []
         for line in iter(self.module_com):
-            data.append(line)
+            data.append(line.decode("utf-8").strip())
 
         return data
 
@@ -204,7 +209,7 @@ class ModuleInterface:
         self.set_node_type("ZED")
 
     def _check_response(self, resp):
-        status_code = resp[-1].decode("utf8").strip()
+        status_code = resp[-1]
         if status_code != "OK":
             raise FirmwareError(status_code)
 
@@ -215,7 +220,7 @@ class ModuleInterface:
         resp_len = self._determine_reg_size(resp_value)
         # if we have a string put it back as is, otherwise we should
         # add leading zeros
-        format_string = "{0:0{1}X}" if type(new_value) is not str else "{}"
+        format_string = "{0:0{1}X}" if not isinstance(new_value, str) else "{}"
         value = new_value if overwrite else new_value | int(resp_value, 16)
 
         return format_string.format(value, resp_len)
@@ -227,26 +232,27 @@ class ModuleInterface:
             new_reg_val = conf_line.value
             # we have to read a register here for determining value size
             resp = self.register_read(conf_line.reg)
-            new_reg_val = self._determine_new_value(
-                resp[self.RESP_REGISTER_POS], new_reg_val, conf_line.overwrite)
-            print(new_reg_val)
+            resp_reg_value = resp[self.RESP_REGISTER_POS]
+            new_reg_val = self._determine_new_value(resp_reg_value,
+                                                    new_reg_val,
+                                                    conf_line.overwrite)
             self.register_write(conf_line.reg, new_reg_val, conf_line.password)
 
+    def readline(self):
+        return self.module_com.readline().decode("utf8").strip()
 
-class ThreadedModuleInterface(serial.threaded.LineReader, ModuleInterface):
-    def __init__(self, *args, **kwargs):
-        ModuleInterface.__init__(self, *args, **kwargs)
-        serial.threaded.LineReader.__init__(self)
+
+class ETRXModuleReader(serial.threaded.LineReader):
+    def __init__(self, module_inst):
+        super().__init__()
+        self.module_inst = module_inst
 
     def __call__(self):
-        # as serial.threaded interface use serial.threaded.LineReader
-        # as the protocol factory
         return self
 
     def connection_made(self, transport):
         super().connection_made(transport)
-        print("port opened")
-        self.write_line("AT")
+        print("Connection with the module opened")
 
     def handle_line(self, data):
         print("line received: {}".format(repr(data)))
@@ -254,10 +260,4 @@ class ThreadedModuleInterface(serial.threaded.LineReader, ModuleInterface):
     def connection_lost(self, exc):
         if exc:
             traceback.print_exc(exc)
-        print("port closed")
-
-    def write_line(self, text):
-        self.write_command(text)
-
-    def get_serial_interface(self):
-        return self.module_com
+        print("Connection with the module closed")
