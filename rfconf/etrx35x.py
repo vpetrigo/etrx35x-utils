@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # coding=utf-8
 
+import re
 import xml.etree.ElementTree as ElemTree
 import serial
 import serial.threaded
@@ -278,3 +279,11 @@ class ETRXModuleReader(serial.threaded.LineReader):
         if exc:
             traceback.print_exc(exc)
         print("Connection with the module closed")
+
+
+def response_split(resp):
+    """
+    Split module response so that in the output list
+    there are only info prefix and values without punctuation
+    """
+    return re.split("\W+", resp)
