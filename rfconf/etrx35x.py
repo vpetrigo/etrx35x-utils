@@ -140,7 +140,9 @@ class ETRXModule:
     def read_resp(self):
         data = []
         for line in iter(self.module_com):
-            data.append(line.decode("utf-8").strip())
+            line = line.decode("utf-8").strip()
+            if line:
+                data.append(line)
 
         return data
 
@@ -232,6 +234,7 @@ class ETRXModule:
             new_reg_val = conf_line.value
             # we have to read a register here for determining value size
             resp = self.register_read(conf_line.reg)
+            print(resp)
             resp_reg_value = resp[self.RESP_REGISTER_POS]
             new_reg_val = self._determine_new_value(resp_reg_value,
                                                     new_reg_val,
