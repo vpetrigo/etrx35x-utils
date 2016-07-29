@@ -11,8 +11,10 @@ class TemperatureReader(rfconf.ETRXModuleReader):
 
     def handle_line(self, data):
         if not data:
+            # skip empty lines
             return
-
+        # data that might be useful for us have format:
+        # SDATA: <Long ID>,<GPIO state>,<ADC0>,<ADC1>,<SeqNO>,<VCC>
         info, *payload = rfconf.response_split(data)
         if info == "SDATA":
             nodeid = payload[self.NODEID_POS]
@@ -36,6 +38,18 @@ def leave_network(node):
         print(resp[-1])
 
 
+def get_network_info(coordinator):
+    NWK_INFO_POS = 1
+    GET_NWK_INFO_CMD = "AT+N"
+    coordinator.write_command(GET_NWK_INFO_CMD)
+    resp = coordinator.read_resp()
+    if resp[-1] == "OK":
+        nwk_info = resp[NWK_INFO_POS]
+        *nused, ch, txpower, panid, longid = rfconf.response_split(nwk_info)
+        print("network already created - ", end="")
+        print("ch: {}, PANID: {}, EUI64: {}".format(ch, panid, longid))
+
+
 def create_network(coordinator):
     NWK_INFO_POS = 1
     NWK_PARAMS_POS = 1
@@ -43,14 +57,19 @@ def create_network(coordinator):
     coordinator.write_command(CREATE_NWK_CMD)
     resp = coordinator.read_resp()
     if resp[-1] == "OK":
+        # network was created. Show its parameters
         nwk_info = resp[NWK_INFO_POS]
         info, ch, sid, lid = rfconf.response_split(nwk_info)
-        print("network created - ", end="")
+        print("network is created - ", end="")
         print("ch: {}, PANID: {}, EUI64: {}".format(ch, sid, lid))
+    else:
+        # network was created some time ago. Use AT+N command to get its
+        # parameters
+        get_network_info(coordinator)
 
 
 def main():
-    coo_node = rfconf.ETRXModule("COM22", node_type="COO")
+    coo_node = rfconf.ETRXModule("COM25", node_type="COO")
     reader = TemperatureReader(coo_node)
     create_network(coo_node)
     ser = coo_node.get_serial_interface()
