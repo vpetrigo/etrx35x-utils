@@ -52,7 +52,6 @@ def get_network_info(coordinator):
 
 def create_network(coordinator):
     NWK_INFO_POS = 1
-    NWK_PARAMS_POS = 1
     CREATE_NWK_CMD = "AT+EN"
     coordinator.write_command(CREATE_NWK_CMD)
     resp = coordinator.read_resp()
@@ -76,7 +75,7 @@ def main():
     reader_thread = serial.threaded.ReaderThread(ser, reader)
 
     with reader_thread as protocol:
-        reader_thread.join()
+        protocol.join()
 
 if __name__ == "__main__":
     main()

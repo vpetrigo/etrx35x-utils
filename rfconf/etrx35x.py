@@ -61,8 +61,8 @@ class ConfigIterator:
             self.reg = item[self.REGISTER_NAME_FIELD]
             overwrite_flag = item.get(self.OVERWRITE_FIELD)
             if (overwrite_flag is not None and
-                (overwrite_flag.casefold() == "n" or
-                 overwrite_flag.casefold() == "no")):
+                    (overwrite_flag.casefold() == "n" or
+                             overwrite_flag.casefold() == "no")):
                 self.overwrite = False
             else:
                 self.overwrite = True
@@ -140,7 +140,6 @@ class ETRXModule:
         assert n_bytes == len(command), "Something wrong during write"
 
     def reader(self):
-        line = ""
         while True:
             line = self.readline()
             if line:
