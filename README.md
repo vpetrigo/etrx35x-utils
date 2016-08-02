@@ -3,7 +3,7 @@
 That module has simple interface for working with ETRX357 modules.
 It supports several helper classes:
 
-1. `class ETRXModule` - interface for ETRX35X module that utilizes [pySerial](https://github.com/pyserial/pyserial) module
+**1**. `class ETRXModule` - interface for ETRX35X module that utilizes [pySerial](https://github.com/pyserial/pyserial) module
 
 Example:
 ```python
@@ -13,20 +13,20 @@ def create_module_inst():
     # connect to the module on the COM1
     module = rfconf.ETRXModule("COM1")
     return module
-    
+
 def access_module_register(module):
-    # read the register S00 
+    # read the register S00
     reg = module.register_read("S00")
     return reg
-    
+
 def write_module_register(module, data):
     # write data to module's register
     module.register_write("S00", data)
 ```
 
-2. `class ETRXModuleConfigReader` - simple interface for reading initial configuration from XML files for different ZigBee node types that available in the standard modules firmware. Available methods:
-- `get_node_conf(node_type: "node type - COO, FFD, etc")` - read configuration branch for the particular `node_type`
-- `get_avail_nodes()` - returns list of supported node types from a XML file
+**2**. `class ETRXModuleConfigReader` - simple interface for reading initial configuration from XML files for different ZigBee node types that available in the standard modules firmware. Available methods:
+  - `get_node_conf(node_type: "node type - COO, FFD, etc")` - read configuration branch for the particular `node_type`
+  - `get_avail_nodes()` - returns list of supported node types from a XML file
 
 Example of XML file:
 ```xml
@@ -77,7 +77,7 @@ Available tags:
     - `name="SXX"` - an internal S-register name (ex.: `name="S00")
     - `password="..."` - if a register is protected, provide password info
     - `overwrite="..."` - possible values are `y/n`. This attribute shows whether it is necessary to save previously stored value by doing logical OR operation with a new value or it must be overwritten
-    - `type="..."` - type of register values. In the current version supports only `hex`, `string`, `int`. It determines how the obtained value must be interpreted during the processing 
+    - `type="..."` - type of register values. In the current version supports only `hex`, `string`, `int`. It determines how the obtained value must be interpreted during the processing
 
 Example:
 ```python
