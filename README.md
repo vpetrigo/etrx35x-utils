@@ -3,7 +3,7 @@
 That module has simple interface for working with ETRX357 modules.
 It supports several helper classes:
 
-**1**. `class ETRXModule` - interface for ETRX35X module that utilizes [pySerial](https://github.com/pyserial/pyserial) module
+**1.** `class ETRXModule` - interface for ETRX35X module that utilizes [pySerial](https://github.com/pyserial/pyserial) module
 
 Example:
 ```python
@@ -24,7 +24,7 @@ def write_module_register(module, data):
     module.register_write("S00", data)
 ```
 
-**2**. `class ETRXModuleConfigReader` - simple interface for reading initial configuration from XML files for different ZigBee node types that available in the standard modules firmware. Available methods:
+**2.** `class ETRXModuleConfigReader` - simple interface for reading initial configuration from XML files for different ZigBee node types that available in the standard modules firmware. Available methods:
   - `get_node_conf(node_type: "node type - COO, FFD, etc")` - read configuration branch for the particular `node_type`
   - `get_avail_nodes()` - returns list of supported node types from a XML file
 
@@ -91,6 +91,7 @@ print(supp_node)
 # Useful links
 
 - [AT-commands Dictionary](http://www.wless.ru/files/ZigBee/Firmware/TG-ETRXn-R309-Commands.pdf) for ETRX35X modules
+- [Product manual](http://www.wless.ru/files/ZigBee/ETRX3/TG-ETRX35x-PM-010-107.pdf) for ETRX35X ZigBee modules
 
 # Contributing
 
