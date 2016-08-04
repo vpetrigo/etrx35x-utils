@@ -62,7 +62,7 @@ class ConfigIterator:
             overwrite_flag = item.get(self.OVERWRITE_FIELD)
             if (overwrite_flag is not None and
                     (overwrite_flag.casefold() == "n" or
-                             overwrite_flag.casefold() == "no")):
+                     overwrite_flag.casefold() == "no")):
                 self.overwrite = False
             else:
                 self.overwrite = True
@@ -191,6 +191,24 @@ class ETRXModule:
         self._check_response(resp)
 
         return resp
+
+    def register_read_bit(self, reg, bit):
+        # the whole command is the same as in a plain register read command,
+        # but we have to add register info here
+        # example: register_read_bit("S0A", 8) -> have to send command ->
+        # -> "ATS0A8?"
+        new_reg_form = reg + "{:X}".format(bit)
+
+        return self.register_read(new_reg_form)
+
+    def register_write_bit(self, reg, bit, value, password=None):
+        # the whole command is the same as in a plain register read command,
+        # but we have to add register info here
+        # example: register_write_bit("S0A", 8, YYYY) -> have to send command
+        # -> "ATS0A8=1:password"
+        new_reg_form = reg + "{:X}".format(bit)
+
+        return self.register_write(reg, value, password)
 
     def set_node_type(self, node_type):
         """
