@@ -18,10 +18,15 @@ def access_module_register(module):
     # read the register S00
     reg = module.register_read("S00")
     return reg
-    
+
 def access_module_register_bit(module):
     # read the bit 1 in the register S00
     reg = module.register_read_bit("S00", 1)
+    return reg
+
+def write_module_register_bit(module):
+    # write the bit 1 in the register S00
+    reg = module.register_write_bit("S00", 1, 0)
     return reg
 
 def write_module_register(module, data):
