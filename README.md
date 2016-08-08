@@ -85,7 +85,7 @@ Available tags:
 - `<node>` - determine node type by adding necessary attribute `type="..."`
 - inside `<node>` section it is possible to determine module's internal registers value. For that use the `<reg>` tag. Necessary attributes:
     - `name="SXX"` - an internal S-register name (ex.: `name="S00")
-    - `password="..."` - if a register is protected, provide password info
+    - `password="..."` - if a register is protected, provide with password info
     - `overwrite="..."` - possible values are `y/n`. This attribute shows whether it is necessary to save previously stored value by doing logical OR operation with a new value or it must be overwritten
     - `type="..."` - type of register values. In the current version supports only `hex`, `string`, `int`. It determines how the obtained value must be interpreted during the processing
 
